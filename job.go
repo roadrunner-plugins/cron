@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
@@ -55,9 +56,25 @@ func (j *Job) nextExecution() (time.Time, error) {
 	}
 
 	// Standard cron expression - find next matching time
-	// Check every minute for the next 2 years (conservative upper bound)
-	maxIterations := 365 * 24 * 60 * 2
-	checkTime := now.Add(time.Minute)
+	// Detect if expression includes seconds (6 fields) or not (5 fields)
+	fields := strings.Fields(j.config.Schedule)
+	hasSeconds := len(fields) == 6
+
+	var checkTime time.Time
+	var increment time.Duration
+	var maxIterations int
+
+	if hasSeconds {
+		// 6-field cron with seconds: check every second for next hour
+		checkTime = now.Truncate(time.Second).Add(time.Second)
+		increment = time.Second
+		maxIterations = 3600 * 2 // 2 hours worth of seconds
+	} else {
+		// 5-field standard cron: check every minute
+		checkTime = now.Truncate(time.Minute).Add(time.Minute)
+		increment = time.Minute
+		maxIterations = 365 * 24 * 60 * 2 // 2 years worth of minutes
+	}
 
 	for i := 0; i < maxIterations; i++ {
 		isDue, err := j.gron.IsDue(j.config.Schedule, checkTime)
@@ -67,11 +84,11 @@ func (j *Job) nextExecution() (time.Time, error) {
 		if isDue {
 			return checkTime, nil
 		}
-		checkTime = checkTime.Add(time.Minute)
+		checkTime = checkTime.Add(increment)
 	}
 
 	// Should never happen with valid cron expression
-	return time.Time{}, fmt.Errorf("could not find next execution time for expression '%s' within 2 years", j.config.Schedule)
+	return time.Time{}, fmt.Errorf("could not find next execution time for expression '%s' within search window", j.config.Schedule)
 }
 
 // Helper methods for special expressions
