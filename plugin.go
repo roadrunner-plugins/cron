@@ -277,10 +277,12 @@ func (p *Plugin) scheduleJob(job *Job) {
 
 	for {
 		// Calculate next execution time
-		next := job.nextExecution()
-		if next.IsZero() {
+		next, err := job.nextExecution()
+		if err != nil {
 			p.log.Error("failed to calculate next execution time",
 				zap.String("job", job.config.Name),
+				zap.String("schedule", job.config.Schedule),
+				zap.Error(err),
 			)
 			return
 		}

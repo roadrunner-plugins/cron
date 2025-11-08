@@ -27,21 +27,21 @@ type Job struct {
 }
 
 // nextExecution calculates the next execution time for the job
-func (j *Job) nextExecution() time.Time {
+func (j *Job) nextExecution() (time.Time, error) {
 	now := time.Now().In(j.location)
 
 	// Handle special expressions
 	switch j.config.Schedule {
 	case "@yearly", "@annually":
-		return j.nextYearly(now)
+		return j.nextYearly(now), nil
 	case "@monthly":
-		return j.nextMonthly(now)
+		return j.nextMonthly(now), nil
 	case "@weekly":
-		return j.nextWeekly(now)
+		return j.nextWeekly(now), nil
 	case "@daily", "@midnight":
-		return j.nextDaily(now)
+		return j.nextDaily(now), nil
 	case "@hourly":
-		return j.nextHourly(now)
+		return j.nextHourly(now), nil
 	}
 
 	// Handle @every expressions
@@ -49,9 +49,9 @@ func (j *Job) nextExecution() time.Time {
 		durationStr := j.config.Schedule[7:]
 		duration, err := time.ParseDuration(durationStr)
 		if err != nil {
-			return time.Time{}
+			return time.Time{}, fmt.Errorf("invalid @every duration '%s': %w", durationStr, err)
 		}
-		return now.Add(duration)
+		return now.Add(duration), nil
 	}
 
 	// Standard cron expression - find next matching time
@@ -62,17 +62,16 @@ func (j *Job) nextExecution() time.Time {
 	for i := 0; i < maxIterations; i++ {
 		isDue, err := j.gron.IsDue(j.config.Schedule, checkTime)
 		if err != nil {
-			// Invalid expression, return zero time
-			return time.Time{}
+			return time.Time{}, fmt.Errorf("cron expression '%s' validation failed: %w", j.config.Schedule, err)
 		}
 		if isDue {
-			return checkTime
+			return checkTime, nil
 		}
 		checkTime = checkTime.Add(time.Minute)
 	}
 
 	// Should never happen with valid cron expression
-	return time.Time{}
+	return time.Time{}, fmt.Errorf("could not find next execution time for expression '%s' within 2 years", j.config.Schedule)
 }
 
 // Helper methods for special expressions
