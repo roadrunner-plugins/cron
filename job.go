@@ -65,25 +65,30 @@ func (j *Job) nextExecution() (time.Time, error) {
 	var maxIterations int
 
 	if hasSeconds {
-		// 6-field cron with seconds: check every second for next hour
-		checkTime = now.Truncate(time.Second).Add(time.Second)
+		// 6-field cron with seconds: check every second
+		checkTime = now.Truncate(time.Second)
 		increment = time.Second
 		maxIterations = 3600 * 2 // 2 hours worth of seconds
 	} else {
 		// 5-field standard cron: check every minute
-		checkTime = now.Truncate(time.Minute).Add(time.Minute)
+		checkTime = now.Truncate(time.Minute)
 		increment = time.Minute
 		maxIterations = 365 * 24 * 60 * 2 // 2 years worth of minutes
 	}
 
+	// Find next execution time (must be after current time)
 	for i := 0; i < maxIterations; i++ {
+		// Check if this time matches the cron expression
 		isDue, err := j.gron.IsDue(j.config.Schedule, checkTime)
 		if err != nil {
 			return time.Time{}, fmt.Errorf("cron expression '%s' validation failed: %w", j.config.Schedule, err)
 		}
-		if isDue {
+
+		// If it matches and is in the future, this is our next execution
+		if isDue && checkTime.After(now) {
 			return checkTime, nil
 		}
+
 		checkTime = checkTime.Add(increment)
 	}
 

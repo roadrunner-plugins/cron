@@ -257,12 +257,12 @@ func (p *Plugin) Weight() uint {
 }
 
 // MetricsCollector returns prometheus collectors
-func (p *Plugin) MetricsCollector() []interface{} {
+func (p *Plugin) MetricsCollector() []prometheus.Collector {
 	if p.metricsClient == nil {
 		return nil
 	}
 
-	return []interface{}{
+	return []prometheus.Collector{
 		p.metricsClient.executionsTotal,
 		p.metricsClient.skippedTotal,
 		p.metricsClient.timeoutTotal,
