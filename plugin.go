@@ -327,12 +327,15 @@ func (p *Plugin) executeJob(job *Job) {
 			return
 		}
 		defer job.mutex.Unlock()
-	}
 
-	// Mark job as running
-	job.mutex.Lock()
-	job.running = true
-	job.mutex.Unlock()
+		// Mark job as running (mutex already locked)
+		job.running = true
+	} else {
+		// AllowOverlap is true, lock just to set running flag
+		job.mutex.Lock()
+		job.running = true
+		job.mutex.Unlock()
+	}
 
 	if p.metricsClient != nil {
 		p.metricsClient.setRunning(job.config.Name, 1)
@@ -350,9 +353,15 @@ func (p *Plugin) executeJob(job *Job) {
 	duration := time.Since(startTime)
 
 	// Mark job as not running
-	job.mutex.Lock()
-	job.running = false
-	job.mutex.Unlock()
+	if !job.config.AllowOverlap {
+		// Mutex already locked, just update flag
+		job.running = false
+	} else {
+		// Lock to update flag
+		job.mutex.Lock()
+		job.running = false
+		job.mutex.Unlock()
+	}
 
 	if p.metricsClient != nil {
 		p.metricsClient.setRunning(job.config.Name, 0)
