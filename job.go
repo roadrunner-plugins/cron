@@ -60,7 +60,12 @@ func (j *Job) nextExecution() time.Time {
 	checkTime := now.Add(time.Minute)
 
 	for i := 0; i < maxIterations; i++ {
-		if j.gron.IsDue(j.config.Schedule, checkTime) {
+		isDue, err := j.gron.IsDue(j.config.Schedule, checkTime)
+		if err != nil {
+			// Invalid expression, return zero time
+			return time.Time{}
+		}
+		if isDue {
 			return checkTime
 		}
 		checkTime = checkTime.Add(time.Minute)
