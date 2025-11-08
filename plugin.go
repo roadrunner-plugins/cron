@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/adhocore/gronx"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/roadrunner-server/errors"
 	"go.uber.org/zap"
 )
