@@ -2,6 +2,9 @@ name: cron
 description: 'Plugin for executing scheduled tasks using cron expressions. Eliminates the need for external cron daemons by managing scheduled command execution within the RoadRunner process itself.'
 category: monitoring
 owner: butschster
+dependencies:
+  - logger
+  - metrics
 author:
   name: Pavel Buchnev
   email: butschster@gmail.com
